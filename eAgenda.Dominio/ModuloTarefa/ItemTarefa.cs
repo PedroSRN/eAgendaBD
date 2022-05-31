@@ -35,6 +35,9 @@ namespace eAgenda.Dominio.ModuloTarefa
                    Titulo == tarefa.Titulo &&
                    Concluido == tarefa.Concluido;
         }
-
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Numero, Titulo, Concluido);
+        }
     }
 }

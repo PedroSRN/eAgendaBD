@@ -59,13 +59,22 @@ namespace eAgenda.Dominio.ModuloTarefa
             return $"Número: {Numero}, Título: {Titulo}, Percentual: {percentual}, Prioridade: {Prioridade}";
         }
 
-        public void AdicionarItem(ItemTarefa item)
+        public bool AdicionarItem(ItemTarefa item)
         {
             if (Itens.Exists(x => x.Equals(item)) == false)
+            {
+                item.Tarefa = this;
                 itens.Add(item);
+                DataConclusao = null;
+                return true;
+            }
+
+            return false;
         }
 
-        public void ConcluirItem(ItemTarefa item)
+    
+
+    public void ConcluirItem(ItemTarefa item)
         {
             ItemTarefa itemTarefa = itens.Find(x => x.Equals(item));
 

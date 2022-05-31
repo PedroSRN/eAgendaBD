@@ -45,8 +45,10 @@ namespace eAgenda.WinApp.ModuloTarefa
 
                 listItensTarefa.Items.Add(itemTarefa);
             }
+
+            tarefa.CalcularPercentualConcluido();
         }
 
-        
+      
     }
 }

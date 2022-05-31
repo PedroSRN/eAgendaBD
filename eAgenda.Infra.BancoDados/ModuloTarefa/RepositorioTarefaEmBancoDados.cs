@@ -109,7 +109,7 @@ namespace eAgenda.Infra.BancoDados.ModuloTarefa
                     [TAREFA_NUMERO] = @TAREFA_NUMERO";
 
         private const string sqlInserirItensTarefa =
-            @"INSERT INTO [TB_ItemTarefa]
+            @"INSERT INTO [TB_ITEMTAREFA]
                 (
 		            [TITULO],
                     [CONCLUIDO],
@@ -120,8 +120,20 @@ namespace eAgenda.Infra.BancoDados.ModuloTarefa
 		            @TITULO,
                     @CONCLUIDO,
                     @TAREFA_NUMERO
-			    ); SELECT SCOPE_IDENTITY()";
+			    ); SELECT SCOPE_IDENTITY();";
 
+        private const string sqlEditarItensTarefa =
+            @"UPDATE  [TB_ITEMTAREFA]
+                SET
+                  [TITULO] = @TITULO,
+                  [CONCLUIDO] = @CONCLUIDO
+               WHERE
+                    [NUMERO] = @NUMERO";
+
+        private const string sqlExcluirItensTarefa =
+            @"DELETE FROM [TB_ITEMTAREFA]
+               WHERE
+                   [TAREFA_NUMERO] = @TAREFA_NUMERO";
         public ValidationResult Inserir(Tarefa novaTarefa)
         {
             var validador = new ValidadorTarefa();
@@ -173,6 +185,7 @@ namespace eAgenda.Infra.BancoDados.ModuloTarefa
 
         public ValidationResult Excluir(Tarefa tarefa)
         {
+            ExcluirItemTarefa(tarefa);
             SqlConnection conexaoComBanco = new SqlConnection(enderecoBanco);
 
             SqlCommand comandoExclusao = new SqlCommand(sqlExcluir, conexaoComBanco);
@@ -191,7 +204,21 @@ namespace eAgenda.Infra.BancoDados.ModuloTarefa
 
             return resultadoValidacao;
         }
-       
+
+        private void ExcluirItemTarefa(Tarefa tarefa)
+        {
+            SqlConnection conexaoComBanco = new SqlConnection(enderecoBanco);
+
+            SqlCommand comandoExclusao = new SqlCommand(sqlExcluirItensTarefa, conexaoComBanco);
+
+            comandoExclusao.Parameters.AddWithValue("TAREFA_NUMERO", tarefa.Numero);
+
+            conexaoComBanco.Open();
+            comandoExclusao.ExecuteNonQuery();
+
+            conexaoComBanco.Close();
+        }
+
         public Tarefa SelecionarPorNumero(int numero)
         {
             SqlConnection conexaoComBanco = new SqlConnection(enderecoBanco);
@@ -256,36 +283,66 @@ namespace eAgenda.Infra.BancoDados.ModuloTarefa
 
             foreach (var item in itens)
             {
-                tarefaSelecionada.AdicionarItem(item);
+                bool itemAdicionado = tarefaSelecionada.AdicionarItem(item);
 
-                SqlCommand comandoInsercao = new SqlCommand(sqlInserirItensTarefa, conexaoComBanco);
+                if (itemAdicionado)
+                {
+                    SqlCommand comandoInsercao = new SqlCommand(sqlInserirItensTarefa, conexaoComBanco);
 
-                ConfigurarParametrosItemTarefa(item ,comandoInsercao);
-                var id = comandoInsercao.ExecuteScalar();
-                item.Numero = Convert.ToInt32(id);
+                    ConfigurarParametrosItemTarefa(item, comandoInsercao);
+                    var id = comandoInsercao.ExecuteScalar();
+                    item.Numero = Convert.ToInt32(id);
+                }
             }
 
-            conexaoComBanco.Close();
+             conexaoComBanco.Close();
 
             tarefaSelecionada.CalcularPercentualConcluido();
+
+            Editar(tarefaSelecionada);
         }
 
         public void AtualizarItens(Tarefa tarefaSelecionada, List<ItemTarefa> itensConcluidos, List<ItemTarefa> itensPendentes)
         {
-            throw new NotImplementedException();
+            SqlConnection conexaoComBanco = new SqlConnection(enderecoBanco);
+            conexaoComBanco.Open();
+
+            foreach(var item in itensConcluidos)
+            {
+                tarefaSelecionada.ConcluirItem(item);
+
+                SqlCommand comandoEdicao = new SqlCommand(sqlEditarItensTarefa, conexaoComBanco);
+
+                ConfigurarParametrosItemTarefa(item, comandoEdicao);
+
+                comandoEdicao.ExecuteNonQuery();
+            }
+
+            foreach(var item in itensPendentes) 
+            {
+                tarefaSelecionada.MarcarPendente(item);
+
+                SqlCommand comandoEdicao = new SqlCommand(sqlEditarItensTarefa, conexaoComBanco);
+
+                ConfigurarParametrosItemTarefa(item, comandoEdicao);
+
+                comandoEdicao.ExecuteNonQuery();
+            }
+
+            tarefaSelecionada.CalcularPercentualConcluido();
         }
 
+        public List<Tarefa> SelecionarTodos()
+        {
+            return SelecionarTodos(StatusTarefaEnum.Todos);
+        }
+        
         private void ConfigurarParametrosItemTarefa(ItemTarefa itemTarefa, SqlCommand comando)
         {
             comando.Parameters.AddWithValue("NUMERO", itemTarefa.Numero);
             comando.Parameters.AddWithValue("TITULO", itemTarefa.Titulo);
             comando.Parameters.AddWithValue("CONCLUIDO", itemTarefa.Concluido);
             comando.Parameters.AddWithValue("TAREFA_NUMERO", itemTarefa.Tarefa.Numero);
-        }
-
-        public List<Tarefa> SelecionarTodos()
-        {
-            return SelecionarTodos(StatusTarefaEnum.Todos);
         }
        
         private void ConfigurarParametrosTarefa(Tarefa tarefa, SqlCommand comando)
